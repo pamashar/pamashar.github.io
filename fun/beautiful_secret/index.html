@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Wallpaper Generator</title>
+        <style>
+        :root {
+            --color-dark: rgb(38, 38, 38);
+            --color-light: rgb(240, 240, 240);
+            --color-bg: var(--color-light);
+            --color-text: var(--color-dark);
+            --color-text-secondary: rgb(180, 180, 180);
+            --font-size: 1rem;
+            --font-size-result: 1rem;
+        }
+        @font-face {
+            font-family: 'RobotoMono';
+            src: url('fonts/roboto/RobotoMono-Medium.ttf') format('truetype');
+            font-display: swap;
+        }
+        * { margin: 0; padding: 0; }
+        body {
+            font-size: var(--font-size);
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            font-family: 'RobotoMono', monospace;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100dvh;
+            min-width: 100vw;
+            width: fit-content;
+            height: fit-content;
+        }
+        .dark {
+            background-color: var(--color-dark);
+            color: var(--color-light);
+        }
+        h1 {
+            color: #333;
+        }
+        .config {
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            transition: .1s;
+            padding: 14px 14px 40px;
+            border: solid 1px var(--color-text-secondary);
+            border-top: none;
+            gap: 4px;
+            opacity: 0;
+            min-width: calc(100% - 2*14px - 2px);
+            background-color: var(--color-bg);
+        }
+        .config:hover {
+            opacity: 1;
+        }
+        input[type="text"] {
+            width: 85vw;
+        }
+        label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            width: fit-content;
+        }
+
+        .row {
+            display: flex;
+        }
+        .ceil {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: var(--font-size-result);
+            height: var(--font-size-result);
+            transition: .3s;
+            border-radius: 4px;
+        }
+        .ceil.legend {
+            display: none;
+            font-size: calc(var(--font-size-result)/3);
+        }
+
+        .result {
+            display: flex;
+            flex-direction: column;
+            width: fit-content;
+            font-size: var(--font-size-result);
+            margin: 40px;
+        }
+        .result.withMatched .ceil.matched {
+            background-color: rgb(31,145,243);
+        }
+        .result.withLegend .ceil.legend {
+            display: flex;
+        }
+        .result.rotated {
+            flex-direction: row;
+        }
+        .result.rotated .row {
+            flex-direction: column;
+        }
+
+        #colorPickerControl {
+            width: 85vw;
+        }
+        .colorPreview {
+            top: 200px;
+            width: 100px;
+            height: 100px;
+            position: absolute;
+            border-radius: 4px;
+            transition: .1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+
+        .hidden {
+            display: none;
+        }
+        button {
+            padding: 4px;
+            birder-radius: 4px;
+            cursor: pointer;
+        }
+        .gap {
+            gap: 12px;
+        }
+        </style>
+    </head>
+    <body>
+        <div class="colorPreview hidden"></div>
+        <div class="config">
+            <input id="symbol" type="text" name="symbol" placeholder="symbol" />
+            <input id="word" type="text" name="word" placeholder="keyword"/>
+            <input id="input" type="text" name="input" placeholder="your text"/>
+            <label for="resultSize">
+                <span>Result size</span>
+                <input id="resultSize" type="range" min="0.2" max="1.4" step="0.1" value="1" />
+                <span class="resultSizeDisplay"></span>
+            </label>
+            <label for="showMatchedControl">
+                <input id="showMatchedControl" type="checkbox" />
+                <span>Highlight matched</span>
+            </label>
+            <label for="showAxesControl">
+                <input id="showAxesControl" type="checkbox" />
+                <span>Show axes</span>
+            </label>
+            <label for="darkThemeControl">
+                <input id="darkThemeControl" type="checkbox" />
+                <span>Dark theme</span>
+            </label>
+            <input id="colorPickerControl" type="range" min="0" step="1" max="200" />
+            <div class="row gap">
+                <label for="colorPickerModeBg">
+                    <input type="radio" id="colorPickerModeBg" name="colorPickerMode" value="bg" checked />
+                    <span>Background color</span>
+                </label>
+                <label for="colorPickerModeText">
+                    <input type="radio" id="colorPickerModeText" name="colorPickerMode" value="text" />
+                    <span>Text color</span>
+                </label>
+                <button type="button" onclick="clearColorPickerStyles()">Reset color styles</button>
+            </div>
+            <button onclick="rotate()">Rotate</button>
+        </div>
+        <div class="result"></div>
+        <script>
+        let chars = [
+            '\u25A0', '\u25B2', '\u25BC', '\u25C6', '\u25CF',
+            '\u25D8', '\u25A3', '\u25A4', '\u25A5', '\u25A6',
+            '\u25A7', '\u25A8', '\u25A9', '\u25AA', '\u25AC',
+            '\u25AE', '\u25E7', '\u25E8', '\u25E9', '\u25EA',
+            '\u2605', '\u2660', '\u2663', '\u2666', '\u265A',
+            '\u265B', '\u265C', '\u265D', '\u265E', '\u265F',
+            '\u2713', '\u2714', '\u2715', '\u2716', '\u2764'
+        ];
+        const abc = 'abcdefghijklmnopqrstuvwxyz';
+        const resultElem = document.querySelector('.result');
+        const bodyElem = document.getElementsByTagName('body')[0];
+        const rootElem = document.querySelector(':root');
+
+        function rotate() {
+            resultElem.classList.toggle('rotated');
+        }
+
+        function shiftLetter(letter, gap) {
+            const currIdx = abc.indexOf(letter);
+            let shiftedIdx = currIdx + gap;
+
+            if (shiftedIdx >= abc.length) { // shifted letter is out of abc range
+                shiftedIdx = shiftedIdx - Math.floor(shiftedIdx/abc.length) * abc.length
+            }
+
+            return abc[shiftedIdx]
+        }
+
+        function createKeywordString(keyword, targetLength) {
+            const kw = clearStr(keyword.toLowerCase());
+
+            const ceil = Math.ceil(targetLength / kw.length);
+
+            const result = new Array(ceil + 1).join(kw); // +1 to allow separator appear floor times
+
+            return result.substring(0, targetLength);
+        }
+
+        function clearStr(str) {
+            return str.replace(/\s/g, '').replace(/[^a-zA-Z]/g, ''); // whitespaces and non alphabetical symbols removed
+        }
+
+        function convertString(smbl, keyword, str){
+            const cleanStr = clearStr(str.toLowerCase());
+
+            const repeatedKwStr = keyword ? createKeywordString(keyword.toLowerCase(), cleanStr.length) : '';
+            const arr = cleanStr.toLowerCase().split('')
+            const preparedStr = repeatedKwStr
+                ? arr.map((letter, idx) => {
+                    if (!abc.includes(letter)) return letter;
+                    return shiftLetter(letter, abc.indexOf(repeatedKwStr[idx]) + 1)
+                }).join(' ')
+                : arr.join(' ');
+
+            if (chars.some(c => c.charCodeAt() === smbl.charCodeAt())) {
+                chars = chars.filter(c => c.charCodeAt() !== smbl.charCodeAt())
+            }
+
+            const result = []
+            for (let i = 0; i < abc.length; i++) result.push([])
+            const isMatchedArr = new Array(preparedStr.length).fill(false)
+            for (let a = 0; a < abc.length; a++) {
+                for (let j = 0; j < preparedStr.length; j++) {
+                    if (abc.indexOf(preparedStr[j]) < 0) {
+                        result[a].push('')
+                        continue
+                    }
+                    if (abc[a] === preparedStr[j]) {
+                        result[a].push(`<span class="ceil matched">${smbl}</span>`)
+                        isMatchedArr[j] = true;
+                    } else {
+                        const preparedChars = isMatchedArr[j] ? [...chars, smbl] : chars;
+                        const charIdx = Math.floor(Math.random() * preparedChars.length)
+                        result[a].push(`<span class="ceil">${preparedChars[charIdx]}</span>`)
+                    }
+                }
+            }
+
+            for (let i = 0; i < abc.length; i++) {
+                result[i].unshift(`<span class="ceil legend vertical">${abc[i]}</span>`)
+            }
+
+            const repeatedKwArr = [];
+            for (let i = -1; i < repeatedKwStr.length; i++) {
+                if (i === -1) {
+                    repeatedKwArr.push(`<span class="ceil legend horizontal"> </span>`)
+                    continue;
+                }
+                repeatedKwArr.push(`<span class="ceil legend horizontal">${abc.indexOf(repeatedKwStr[i])+1}</span>`)
+            }
+            result.unshift(repeatedKwArr)
+
+            return result.map(ceils => {
+                return `<span class="row">${ceils.join('')}</span>`
+            }).join('');
+        }
+        function convertRangeToHex(value) {
+            // Convert percentage to value between 0 and 16777215 (hex FFFFFF)
+            const rawHex = Math.floor((value / 200) * 16777215);
+            //const rawHex = Math.floor((value / 16777215) * 16777215);
+            // Convert to hex and pad with zeros if needed;
+            return '#'+rawHex.toString(16).padStart(6, '0');
+        }
+        function clearColorPickerStyles(bodyElem) {
+            const computed = getComputedStyle(rootElem)
+            rootElem.style.setProperty('--color-bg', computed.getPropertyValue('--color-light'));
+            rootElem.style.setProperty('--color-text', computed.getPropertyValue('--color-dark'));
+        }
+        function addListenersToColorPickerModeOptions() {
+            const options = document.querySelectorAll('input[name="colorPickerMode"]');
+            options.forEach(option => {
+                option.addEventListener('click', function(event) {
+                    options.forEach(option => option.removeAttribute('checked'));
+                    option.setAttribute('checked', true);
+                })
+            })
+
+        }
+        function addListenersToInputs() {
+            const resultElem = document.querySelector('.result');
+            const inputElem = document.querySelector('input[name="input"]');
+            const wordElem = document.querySelector('input[name="word"]');
+            const symbolElem = document.querySelector('input[name="symbol"]');
+            const inputs = [inputElem, wordElem, symbolElem];
+            inputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    resultElem.innerHTML = convertString(symbolElem.value, wordElem.value, inputElem.value);
+                })
+            })
+        }
+
+        addListenersToInputs();
+        addListenersToColorPickerModeOptions();
+
+        const showMatchedControlElem = document.querySelector('#showMatchedControl');
+        showMatchedControlElem.addEventListener('change', (event) => {
+            resultElem.classList.toggle('withMatched')
+        })
+
+        const showAxesControlElem = document.querySelector('#showAxesControl');
+        showAxesControlElem.addEventListener('change', (event) => {
+            resultElem.classList.toggle('withLegend')
+        })
+
+        const darkThemeControlElem = document.querySelector('#darkThemeControl');
+        darkThemeControlElem.addEventListener('change', (event) => {
+            const computed = getComputedStyle(rootElem)
+            const isDarkMode = computed.getPropertyValue('--color-bg') === getComputedStyle(rootElem).getPropertyValue('--color-dark');
+            if (isDarkMode) {
+                rootElem.style.setProperty('--color-bg', computed.getPropertyValue('--color-light'));
+                rootElem.style.setProperty('--color-text', computed.getPropertyValue('--color-dark'));
+            } else {
+                rootElem.style.setProperty('--color-bg', computed.getPropertyValue('--color-dark'));
+                rootElem.style.setProperty('--color-text', computed.getPropertyValue('--color-light'));
+            }
+        })
+
+        const resultSizeControlElem = document.querySelector('#resultSize');
+        resultSizeControlElem.addEventListener('input', (event) => {
+            const value = resultSizeControlElem.value;
+            rootElem.style.setProperty('--font-size-result', value + 'rem');
+        })
+
+        const colorPickerControlElem = document.querySelector('#colorPickerControl');
+        const colorPreviewElem = document.querySelector('.colorPreview');
+        ['mousedown', 'touchstart'].forEach(event => colorPickerControlElem.addEventListener(event, event => {
+            colorPreviewElem.style.left = (event.clientX || event.touches[0].clientX) - 100 / 2 + 'px';
+            colorPreviewElem.style.top = (event.clientY || event.touches[0].clientY) - 100 - 10 + 'px';
+            colorPreviewElem.classList.remove('hidden');
+        }));
+        ['mousemove', 'touchmove'].forEach(event => colorPickerControlElem.addEventListener(event, event => {
+            requestAnimationFrame(() => {
+                colorPreviewElem.style.left = (event.clientX || event.touches[0].clientX) - 100 / 2 + 'px';
+            })
+        }));
+        ['mouseup', 'touchend'].forEach(event => colorPickerControlElem.addEventListener(event, event => {
+            colorPreviewElem.classList.add('hidden');
+        }));
+
+        colorPickerControlElem.addEventListener('input', (event) => {
+            const value = colorPickerControlElem.value;
+            const hexColor = convertRangeToHex(value);
+            colorPreviewElem.innerHTML = hexColor;
+            colorPreviewElem.style.backgroundColor = hexColor;
+        })
+        colorPickerControlElem.addEventListener('change', (event) => {
+            const colorPickerModeElem = document.querySelector('input[name="colorPickerMode"]:checked');
+            const isModeBg = colorPickerModeElem.value === 'bg';
+            const value = colorPickerControlElem.value;
+            const hexColor = convertRangeToHex(value);
+            rootElem.style.setProperty(isModeBg ? '--color-bg' : '--color-text', hexColor);
+            colorPreviewElem.innerHTML = '';
+            colorPreviewElem.style = '';
+        })
+        </script>
+    </body>
+</html>
