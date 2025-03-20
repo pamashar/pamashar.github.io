@@ -280,7 +280,7 @@
                         isMatchedArr[j] = true;
                     } else {
                         const preparedChars = isMatchedArr[j] ? [...chars, smbl] : chars;
-                        const charIdx = Math.floor(Math.random() * (preparedChars.length - 1))
+                        const charIdx = Math.floor(Math.random() * preparedChars.length)
                         result[a].push(`<span class="ceil">${preparedChars[charIdx]}</span>`)
                     }
                 }
