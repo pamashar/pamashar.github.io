@@ -39,9 +39,6 @@
             background-color: var(--color-dark);
             color: var(--color-light);
         }
-        h1 {
-            color: #333;
-        }
         .config {
             position: absolute;
             top: 0;
@@ -49,10 +46,10 @@
             display: flex;
             flex-direction: column;
             transition: .1s;
-            padding: 14px 14px 40px;
+            padding: 14px;
             border: solid 1px var(--color-text-secondary);
             border-top: none;
-            gap: 4px;
+            gap: 8px;
             min-width: calc(100% - 2*14px - 2px);
             background-color: var(--color-bg);
         }
@@ -312,6 +309,7 @@
             return '#'+rawHex.toString(16).padStart(6, '0');
         }
         function clearColorPickerStyles(bodyElem) {
+            darkThemeControlElem.checked = false;
             const computed = getComputedStyle(rootElem)
             rootElem.style.setProperty('--color-bg', computed.getPropertyValue('--color-light'));
             rootElem.style.setProperty('--color-text', computed.getPropertyValue('--color-dark'));
