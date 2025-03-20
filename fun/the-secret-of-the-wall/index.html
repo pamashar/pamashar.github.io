@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Wallpaper Generator</title>
+        <title>The Secret of the Wall</title>
         <style>
         :root {
             --color-dark: rgb(38, 38, 38);
@@ -188,6 +188,30 @@
         const bodyElem = document.getElementsByTagName('body')[0];
         const configElem = document.querySelector('.config');
 
+        function generateSVGFavicon(character) {
+            return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                        <rect width="32" height="32" fill="#f8f9fa" rx="4" ry="4"/>
+                        <text x="16" y="24" font-size="24" font-family="Arial" text-anchor="middle" fill="#212529">
+                            ${character}
+                        </text>
+                    </svg>
+                   `;
+        };
+        let svgFavicons = chars.map(char => generateSVGFavicon(char));
+        setInterval(function() {
+            svgIcon = svgFavicons[Math.floor(Math.random() * svgFavicons.length - 1)]
+            const encodedSvg = encodeURIComponent(svgIcon);
+            const href = `data:image/svg+xml,${encodedSvg}`;
+            const currentFavIconElem = document.querySelector('link[rel="icon"]')
+            if (currentFavIconElem) currentFavIconElem.href = href;
+                else {
+                    const link = document.createElement("link");
+                    link.rel = 'icon';
+                    link.href = href;
+                    document.head.appendChild(link);
+                }
+        }, 1000)
+
         function toggleConfig() {
             configElem.classList.toggle('hidden');
         }
@@ -256,7 +280,7 @@
                         isMatchedArr[j] = true;
                     } else {
                         const preparedChars = isMatchedArr[j] ? [...chars, smbl] : chars;
-                        const charIdx = Math.floor(Math.random() * preparedChars.length)
+                        const charIdx = Math.floor(Math.random() * (preparedChars.length - 1))
                         result[a].push(`<span class="ceil">${preparedChars[charIdx]}</span>`)
                     }
                 }
