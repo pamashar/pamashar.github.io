@@ -53,12 +53,8 @@
             border: solid 1px var(--color-text-secondary);
             border-top: none;
             gap: 4px;
-            opacity: 0;
             min-width: calc(100% - 2*14px - 2px);
             background-color: var(--color-bg);
-        }
-        .config:hover {
-            opacity: 1;
         }
         input[type="text"] {
             width: 85vw;
@@ -140,7 +136,7 @@
     </head>
     <body>
         <div class="colorPreview hidden"></div>
-        <div class="config">
+        <div class="config hidden">
             <input id="symbol" type="text" name="symbol" placeholder="symbol" />
             <input id="word" type="text" name="word" placeholder="keyword"/>
             <input id="input" type="text" name="input" placeholder="your text"/>
@@ -188,8 +184,18 @@
         ];
         const abc = 'abcdefghijklmnopqrstuvwxyz';
         const resultElem = document.querySelector('.result');
-        const bodyElem = document.getElementsByTagName('body')[0];
         const rootElem = document.querySelector(':root');
+        const bodyElem = document.getElementsByTagName('body')[0];
+        const configElem = document.querySelector('.config');
+
+        function toggleConfig() {
+            configElem.classList.toggle('hidden');
+        }
+        bodyElem.addEventListener('click', toggleConfig);
+
+        configElem.addEventListener('click', event => {
+            event.stopPropagation();
+        })
 
         function rotate() {
             resultElem.classList.toggle('rotated');
