@@ -23,16 +23,8 @@ scene.add(light);
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 
-let flashlightFocus = Math.PI / 2; // Default cone angle (45 degrees)
+let flashlightFocus = Math.PI / 4; // Default cone angle (45 degrees)
 const flashlightFocusChangeSpeed = 0.05; // Speed of focusing/narrowing the beam
-
-// Floor
-//const floor = new THREE.Mesh(
-//  new THREE.PlaneGeometry(30, 30),
-//  new THREE.MeshStandardMaterial({ color: 0x444444 })
-//);
-//floor.rotation.x = -Math.PI / 2;
-//scene.add(floor);
 
 // Player
 const player = new THREE.Mesh(
@@ -132,7 +124,7 @@ function createRooms({ cols = 1, rows = 1, roomSize = 10 }) {
 
       // Add 4 walls around the room
       const half = roomSize / 2;
-      const height = 2;
+      const height = 3.2;
 
       createWall(roomX, height / 2, roomZ - half, roomSize, height, 0.5); // Top
       createWall(roomX, height / 2, roomZ + half, roomSize, height, 0.5); // Bottom
@@ -165,13 +157,15 @@ function checkCollision(x, z) {
 }
 
 let playerRotation = 0;
+let lookDirection = 0; // left/right (yaw)
+let lookVertical = 0; // up/down (pitch)
 
 const flashlight = new THREE.SpotLight(0xffffff, 5, 50, Math.PI / 4, 0.1, 2);
 const flashlightDistance = 0.5;
 flashlight.position.set(
-  player.position.x + Math.sin(playerRotation) * flashlightDistance,
+  player.position.x + Math.sin(playerRotation),
   player.position.y + 0.5,
-  player.position.z - Math.cos(playerRotation) * flashlightDistance
+  player.position.z - Math.cos(playerRotation),
 );
 scene.add(flashlight);
 
@@ -196,33 +190,42 @@ function isOnGround() {
 function animate() {
   requestAnimationFrame(animate);
 
-  const turnSpeed = 0.05;
-  if (keys["ArrowLeft"] || keys["a"] || keys["A"]) playerRotation -= turnSpeed;
-  if (keys["ArrowRight"] || keys["d"] || keys["D"]) playerRotation += turnSpeed;
+const speed = 0.1;
 
-  const speed = 0.1;
-  const dx = Math.sin(playerRotation) * speed;
-  const dz = Math.cos(playerRotation) * speed;
+// Get direction vectors based on lookDirection
+const forwardX = Math.sin(lookDirection);
+const forwardZ = -Math.cos(lookDirection);
+const rightX = Math.cos(lookDirection);
+const rightZ = Math.sin(lookDirection);
 
-  let newX = player.position.x;
-  let newZ = player.position.z;
+let moveX = 0;
+let moveZ = 0;
 
-  if (keys["ArrowUp"] || keys["w"] || keys["W"]) {
-    newX += dx;
-    newZ -= dz;
-  }
-  if (keys["ArrowDown"] || keys["s"] || keys["S"]) {
-    newX -= dx;
-    newZ += dz;
-  }
-
+if (keys["ArrowUp"] || keys["w"] || keys["W"]) {
+  moveX += forwardX * speed;
+  moveZ += forwardZ * speed;
+}
+if (keys["ArrowDown"] || keys["s"] || keys["S"]) {
+  moveX -= forwardX * speed;
+  moveZ -= forwardZ * speed;
+}
+if (keys["ArrowLeft"] || keys["a"] || keys["A"]) {
+  moveX -= rightX * speed;
+  moveZ -= rightZ * speed;
+}
+if (keys["ArrowRight"] || keys["d"] || keys["D"]) {
+  moveX += rightX * speed;
+  moveZ += rightZ * speed;
+}
   if (keys[" "] && !isJumping && isOnGround()) {
     isJumping = true;
     playerVelocityY = jumpSpeed;
   }
+const newX = player.position.x + moveX;
+const newZ = player.position.z + moveZ;
 
-  if (!checkCollision(newX, player.position.z)) player.position.x = newX;
-  if (!checkCollision(player.position.x, newZ)) player.position.z = newZ;
+if (!checkCollision(newX, player.position.z)) player.position.x = newX;
+if (!checkCollision(player.position.x, newZ)) player.position.z = newZ;
 
   if (isJumping) {
     player.position.y += playerVelocityY;
@@ -241,32 +244,78 @@ function animate() {
   );
   camera.rotation.set(-Math.PI / 30, playerRotation, 0);
 
-  const lookX = player.position.x + Math.sin(playerRotation);
-  const lookZ = player.position.z - Math.cos(playerRotation);
-  const lookAtYJumpDiff = (!isOnGround() && Math.abs(playerVelocityY / 6) || 0);
-  camera.lookAt(
-    lookX,
-    player.position.y + cameraPositions[currentCameraViewIdx].height.add - cameraPositions[currentCameraViewIdx].height.add / 10 + lookAtYJumpDiff,
-    lookZ
-  );
+const camHeight = cameraPositions[currentCameraViewIdx].height.add;
+camera.position.set(
+  player.position.x,
+  player.position.y + camHeight,
+    player.position.z,
+);
 
+// Calculate direction vector based on both yaw and pitch
+const dirX = Math.sin(lookDirection) * Math.cos(lookVertical);
+const dirY = Math.sin(lookVertical);
+const dirZ = -Math.cos(lookDirection) * Math.cos(lookVertical);
+
+camera.lookAt(
+  player.position.x + dirX,
+  player.position.y + camHeight + dirY,
+  player.position.z + dirZ
+);
+
+
+  // Update the flashlight's position based on the camera's direction
   flashlight.position.set(
-    player.position.x + Math.sin(playerRotation) * flashlightDistance,
-    player.position.y + 0.5,
-    player.position.z - Math.cos(playerRotation) * flashlightDistance
+    player.position.x,
+    player.position.y,
+    player.position.z,
   );
-  flashlight.target.position.set(
-    player.position.x + Math.sin(playerRotation) * 5,
-    player.position.y + 0.5,
-    player.position.z - Math.cos(playerRotation) * 5
-  );
-  flashlightFocus = Math.max(Math.PI / 20, Math.min(Math.PI / 2.5, flashlightFocus));
-  flashlight.angle = flashlightFocus;
-  flashlight.visible = flashlightOn;
 
-  player.rotation.y = -playerRotation;
+  // Update the flashlight target position based on the camera's look direction
+  flashlight.target.position.set(
+    player.position.x + dirX,
+  player.position.y + dirY,
+  player.position.z + dirZ);
+
+  // Set the flashlight's angle to simulate a beam
+  flashlight.angle = flashlightFocus;
+  flashlight.visible = flashlightOn; // Toggle visibility with flashlightOn
+
+  player.rotation.y = -lookDirection;
   renderer.render(scene, camera);
 }
 animate();
 
+const onMouseMove = (event) => {
+  const sensitivity = 0.005;
+  lookDirection += event.movementX * sensitivity;
+  lookVertical -= event.movementY * sensitivity;
 
+  // Clamp vertical look between -80° and 80°
+  const maxPitch = Math.PI / 2.5;
+  lookVertical = Math.max(-maxPitch, Math.min(maxPitch, lookVertical));
+}
+document.addEventListener('mousemove', onMouseMove);
+
+document.body.addEventListener('click', () => {
+  if (document.pointerLockElement !== document.body) {
+    document.body.requestPointerLock();
+  }
+});
+
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement === document.body) {
+    console.log("Pointer locked");
+    // Start listening to mouse move
+    document.addEventListener("mousemove", onMouseMove);
+  } else {
+    console.log("Pointer unlocked");
+    // Stop listening to mouse move
+    document.removeEventListener("mousemove", onMouseMove);
+  }
+});
+
+//document.addEventListener("keydown", (event) => {
+//  if (event.key === "q") {
+//    document.exitPointerLock();
+//  }
+//});
