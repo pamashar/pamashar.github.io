@@ -23,12 +23,12 @@ scene.add(light);
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 
-let flashlightFocus = Math.PI / 4; // Default cone angle (45 degrees)
+let flashlightFocus = Math.PI / 2; // Default cone angle (45 degrees)
 const flashlightFocusChangeSpeed = 0.05; // Speed of focusing/narrowing the beam
 
 // Floor
 const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(20, 20),
+  new THREE.PlaneGeometry(30, 30),
   new THREE.MeshStandardMaterial({ color: 0x444444 })
 );
 floor.rotation.x = -Math.PI / 2;
@@ -39,14 +39,14 @@ const player = new THREE.Mesh(
   new THREE.BoxGeometry(1, 1, 1),
   new THREE.MeshStandardMaterial({ color: 0x00ffcc })
 );
-player.position.set(-4, 0.5, 4); // Starting in About Me room
+player.position.set(-12, 0, 12); // Starting in About Me room
 scene.add(player);
 
-let currentCameraViewIdx = 0;
+let currentCameraViewIdx = 2;
 let cameraPositions = [
-  { height: { base: player.position.y, add: 0.5 }, angle: 1 },
-  { height: { base: player.position.y, add: 2.5 }, angle: 1 },
-  { height: { base: player.position.y, add: 5 }, angle: 1 },
+  { height: { base: player.position.y, add: 0.5 }, angleMultiplyer: 1 },
+  { height: { base: player.position.y, add: 2.5 }, angleMultiplyer: 1.25 },
+  { height: { base: player.position.y, add: 50 }, angleMultiplyer: 100 },
 ];
 const getNextCameraViewIdx = () => {
   if (!cameraPositions[currentCameraViewIdx + 1]) return 0;
@@ -73,7 +73,7 @@ function createWall(x, y, z, scaleX, scaleY, scaleZ) {
 
 // Room boundaries
 const half = 5;
-const height = 2;
+const height = 0.5;
 
 // Add walls between/around 4 rooms (2x2 grid of 10x10 units)
 for (let x = -10; x <= 10; x += 10) {
@@ -171,18 +171,14 @@ if (keys["ArrowRight"] || keys["d"] || keys["D"]) playerRotation += turnSpeed;
   let newZ = player.position.z;
 
   if (keys["ArrowUp"] || keys["w"] || keys["W"]) {
-    if (keys["Shift"]) flashlightFocus -= flashlightFocusChangeSpeed;  // Narrow beam
-    else {
-         newX += dx;
+    //if (keys["Shift"]) flashlightFocus -= flashlightFocusChangeSpeed;  // Narrow beam
+    newX += dx;
     newZ -= dz; 
-    }
   }
   if (keys["ArrowDown"] || keys["s"] || keys["S"]) {
-        if (keys["Shift"]) flashlightFocus += flashlightFocusChangeSpeed;  // Widen beam
-    else {
-         newX -= dx;
+    //if (keys["Shift"]) flashlightFocus += flashlightFocusChangeSpeed;  // Widen beam
+    newX -= dx;
     newZ += dz; 
-    }
   }
 
   // Jump mechanic - only allow jumping if on the ground
@@ -228,7 +224,7 @@ if (keys["ArrowRight"] || keys["d"] || keys["D"]) playerRotation += turnSpeed;
   const lookAtYJumpDiff = (!isOnGround() && Math.abs(playerVelocityY/6) || 0);
   camera.lookAt(
     lookX,
-    player.position.y + cameraPositions[currentCameraViewIdx].height.add + lookAtYJumpDiff,
+    player.position.y + cameraPositions[currentCameraViewIdx].height.add - cameraPositions[currentCameraViewIdx].height.add/10 + lookAtYJumpDiff,
     lookZ,
   );
 
