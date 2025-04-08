@@ -34,7 +34,7 @@ const player = new THREE.Mesh(
 player.position.set(-20, 0.5, -20); // Centered in the room
 scene.add(player);
 
-let currentCameraViewIdx = 1;
+let currentCameraViewIdx = 0;
 let cameraPositions = [
   { height: { base: player.position.y, add: 0.5 }, angleMultiplyer: 1 },
   { height: { base: player.position.y, add: 5 }, angleMultiplyer: 10 },
