@@ -97,7 +97,7 @@ function createWallWithData(x, y, z, scaleX, scaleY, scaleZ, direction, roomId) 
   if (roomId !== undefined) {
     const room = roomData.find(r => r.id === roomId);
     if (room) {
-      room.walls.push({ position: { x, y, z }, scale: { x: scaleX, y: scaleY, z: scaleZ }, direction });
+      room.walls.push({ id: `${roomId}-${direction}`, position: { x, y, z }, scale: { x: scaleX, y: scaleY, z: scaleZ }, direction });
     }
   }
 }
@@ -151,7 +151,7 @@ function createRooms({ cols = 1, rows = 1, roomSize = 10 }) {
   }
 }
 createRooms({ cols: 2, rows: 2, roomSize: 30 });
-
+console.log(roomData)
 // Movement
 const keys = {};
 document.addEventListener('keydown', e => keys[e.key] = true);
