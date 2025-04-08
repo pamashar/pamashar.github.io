@@ -52,17 +52,6 @@ const toggleCamera = () => {
 const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x999999 });
 const walls = [];
 
-function createWall(x, y, z, scaleX, scaleY, scaleZ) {
-  const wall = new THREE.Mesh(
-    new THREE.BoxGeometry(1, 1, 1),
-    new THREE.MeshStandardMaterial({ color: 0x999999 })
-  );
-  wall.position.set(x, y, z);
-  wall.scale.set(scaleX, scaleY, scaleZ);
-  scene.add(wall);
-  walls.push(wall);
-}
-
 // Function to add a label on the floor
 function addLabelToFloor(x, z, text) {
   const canvas = document.createElement("canvas");
@@ -92,11 +81,32 @@ function addLabelToFloor(x, z, text) {
   labelGroup.add(plane);
 }
 
-// Function to create rooms (grid of rooms)
+// We'll store structured room data here
+const roomData = [];
+
+function createWallWithData(x, y, z, scaleX, scaleY, scaleZ, direction, roomId) {
+  const wall = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshStandardMaterial({ color: 0x999999 })
+  );
+  wall.position.set(x, y, z);
+  wall.scale.set(scaleX, scaleY, scaleZ);
+  scene.add(wall);
+  walls.push(wall);
+
+  if (roomId !== undefined) {
+    const room = roomData.find(r => r.id === roomId);
+    if (room) {
+      room.walls.push({ position: { x, y, z }, scale: { x: scaleX, y: scaleY, z: scaleZ }, direction });
+    }
+  }
+}
+
 function createRooms({ cols = 1, rows = 1, roomSize = 10 }) {
   // Clear existing walls and labels from the scene
   for (const wall of walls) scene.remove(wall);
   walls.length = 0;
+  roomData.length = 0;
 
   const labelGroup = scene.getObjectByName("labels");
   if (labelGroup) scene.remove(labelGroup);
@@ -104,39 +114,44 @@ function createRooms({ cols = 1, rows = 1, roomSize = 10 }) {
   const startX = -(cols * roomSize) / 2 + roomSize / 2;
   const startZ = -(rows * roomSize) / 2 + roomSize / 2;
 
-  // Create the floor based on the number of rooms and their size
   const floorWidth = cols * roomSize;
   const floorDepth = rows * roomSize;
 
-  // Create the floor (a large plane that covers the entire grid)
   const floorGeometry = new THREE.PlaneGeometry(floorWidth, floorDepth);
   const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5 });
   const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-  floor.rotation.x = -Math.PI / 2; // Rotate it to lie flat on the ground
-  floor.position.set(0, 0, 0); // Position the floor at the center of the scene
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0, 0, 0);
   scene.add(floor);
 
-  // Create walls and labels for each room
+  let roomIdCounter = 1;
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const roomX = startX + col * roomSize;
       const roomZ = startZ + row * roomSize;
-
-      // Add 4 walls around the room
       const half = roomSize / 2;
       const height = 3.2;
+      const id = roomIdCounter++;
+      const label = `Room ${id}`;
 
-      createWall(roomX, height / 2, roomZ - half, roomSize, height, 0.5); // Top
-      createWall(roomX, height / 2, roomZ + half, roomSize, height, 0.5); // Bottom
-      createWall(roomX - half, height / 2, roomZ, 0.5, height, roomSize); // Left
-      createWall(roomX + half, height / 2, roomZ, 0.5, height, roomSize); // Right
+      roomData.push({
+        id,
+        name: label,
+        position: { x: roomX, z: roomZ },
+        walls: []
+      });
 
-      // Add label for this room
-      addLabelToFloor(roomX, roomZ, `Room ${row * cols + col + 1}`);
+      createWallWithData(roomX, height / 2, roomZ - half, roomSize, height, 0.5, "north", id);
+      createWallWithData(roomX, height / 2, roomZ + half, roomSize, height, 0.5, "south", id);
+      createWallWithData(roomX - half, height / 2, roomZ, 0.5, height, roomSize, "west", id);
+      createWallWithData(roomX + half, height / 2, roomZ, 0.5, height, roomSize, "east", id);
+
+      addLabelToFloor(roomX, roomZ, label);
     }
   }
 }
 createRooms({ cols: 2, rows: 2, roomSize: 30 });
+
 // Movement
 const keys = {};
 document.addEventListener('keydown', e => keys[e.key] = true);
