@@ -57,7 +57,7 @@ const doors = [];
 
 // Function to create a door
 function createDoor(x, y, z, width, height, depth, orientation) {
-  const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 }); // Brown door
+  const doorMaterial = new THREE.MeshStandardMaterial({ color: 'white' }); // white door
   const door = new THREE.Mesh(
     new THREE.BoxGeometry(width, height, depth),
     doorMaterial
@@ -77,7 +77,9 @@ function createDoor(x, y, z, width, height, depth, orientation) {
   
   scene.add(door);
   doors.push(door);
-  walls.push(door); // Add to walls for collision detection
+  walls.push(door);
+
+  // Do NOT add door to walls array for collision detection
   
   return door;
 }
@@ -104,43 +106,89 @@ function getNearestDoor() {
 // Open/close door function
 function toggleDoor(door) {
   if (!door) return;
+  
   door.userData.isOpen = !door.userData.isOpen;
+  
+  // We'll handle collision through the door's position rather than removing it from walls
+  // This approach is more reliable
+  if (door.userData.isOpen) {
+    // Start the opening animation
+    // The collision check will use the updated position
+  } else {
+    // Start the closing animation
+    // The door will block passage when closed
+  }
 }
 
-// Handle door animation
+// Handle door animation - door shrinks in width when opening
 function animateDoors() {
+  const maxOffset = 1 - 0.025;
   for (const door of doors) {
     if (door.userData.isOpen) {
-      // Animate door opening
-      if (door.userData.orientation === 'x') {
-        // East/West oriented door - slide fully into wall
-        if (door.userData.openAmount < 1) {
-          door.userData.openAmount += 0.1;
-          // Move door completely into wall (using extra factor for safety)
-          door.position.x = door.userData.originalPosition.x + 
-            (door.userData.openAmount * door.geometry.parameters.width * 1.5);
-        }
-      } else {
-        // North/South oriented door - slide fully into wall
-        if (door.userData.openAmount < 1) {
-          door.userData.openAmount += 0.1;
-          // Move door completely into wall (using extra factor for safety)
-          door.position.z = door.userData.originalPosition.z + 
-            (door.userData.openAmount * door.geometry.parameters.depth * 1.5);
+      // Animate door opening - shrink its width/depth to make it disappear into the wall
+      if (door.userData.openAmount < maxOffset) {
+        door.userData.openAmount += 0.01;
+        
+        // Update the door's scale to simulate it sliding into the wall
+        if (door.userData.orientation === 'z') {
+          // East/West oriented door - reduce its width (x-scale)
+          door.scale.x = maxOffset - door.userData.openAmount;
+          
+          // Adjust position to make it look like it's sliding into the wall
+          // Get which side of the door is attached to the wall
+          const wallSide = (door.userData.originalPosition.x > 0) ? 1 : -1;
+          const width = door.geometry.parameters.width;
+          const offset = (width * (maxOffset - door.scale.x)) / 2;
+          
+          // Slide toward the wall
+          door.position.x = door.userData.originalPosition.x + (wallSide * offset);
+        } else {
+          // North/South oriented door - reduce its depth (z-scale)
+          door.scale.z = 1.0 - door.userData.openAmount;
+          
+          // Adjust position to make it look like it's sliding into the wall
+          const wallSide = (door.userData.originalPosition.z > 0) ? 1 : -1;
+          const depth = door.geometry.parameters.depth;
+          const offset = (depth * (1.0 - door.scale.z)) / 2;
+          
+          // Slide toward the wall
+          door.position.z = door.userData.originalPosition.z + (wallSide * offset);
         }
       }
     } else {
-      // Animate door closing
+      // Animate door closing - increase its width/depth back to original
       if (door.userData.openAmount > 0) {
-        door.userData.openAmount -= 0.1;
-        if (door.userData.orientation === 'x') {
-          door.position.x = door.userData.originalPosition.x + 
-            (door.userData.openAmount * door.geometry.parameters.width * 1.5);
+        door.userData.openAmount -= 0.01;
+        
+        if (door.userData.orientation === 'z') {
+          // East/West door
+          door.scale.x = 1.0 - door.userData.openAmount;
+          
+          // Adjust position back to center
+          const wallSide = (door.userData.originalPosition.x > 0) ? 1 : -1;
+          const width = door.geometry.parameters.width;
+          const offset = (width * (maxOffset - door.scale.x)) / 2;
+          
+          door.position.x = door.userData.originalPosition.x + (wallSide * offset);
         } else {
-          door.position.z = door.userData.originalPosition.z + 
-            (door.userData.openAmount * door.geometry.parameters.depth * 1.5);
+          // North/South door
+          door.scale.z = 1.0 - door.userData.openAmount;
+          
+          // Adjust position back to center
+          const wallSide = (door.userData.originalPosition.z > 0) ? 1 : -1;
+          const depth = door.geometry.parameters.depth;
+          const offset = (depth * (1.0 - door.scale.z)) / 2;
+          
+          door.position.z = door.userData.originalPosition.z + (wallSide * offset);
         }
       }
+    }
+    
+    // If door is fully open (almost invisible), make it not block movement
+    if (door.userData.openAmount > 0.9) {
+      //door.visible = false; // Optionally hide the door when fully open
+    } else {
+      //door.visible = true;
     }
   }
 }
@@ -199,124 +247,115 @@ function addLabelToFloor(x, z, text) {
 // We'll store structured room data here
 const roomData = [];
 
-// Completely rewritten wall creation function
-function createWallWithGap(x, y, z, width, height, depth, direction, roomId, gapStart = null, gapEnd = null, createDoorInGap = false) {
-  // If no gap specified, create a solid wall
-  if (gapStart === null || gapEnd === null || gapStart >= gapEnd) {
+// Function to create a wall with a possible gap (part of the wall)
+function createWallWithData(x, y, z, scaleX, scaleY, scaleZ, direction, roomId, gapStart = null, gapEnd = null, createDoorInGap = false) {
+  // Only add the full-size wall if there's no gap
+  if (gapStart === null || gapEnd === null) {
     const wall = new THREE.Mesh(
-      new THREE.BoxGeometry(width, height, depth),
+      new THREE.BoxGeometry(scaleX, scaleY, scaleZ),
       wallMaterial
     );
     wall.position.set(x, y, z);
     scene.add(wall);
     walls.push(wall);
+  } else {
+    // Handle gaps
+    const gapWidth = gapEnd - gapStart;
     
-    // Add to room data
-    if (roomId !== undefined) {
-      const room = roomData.find(r => r.id === roomId);
-      if (room) {
-        room.walls.push({
-          id: `${roomId}-${direction}`,
-          position: { x, y, z },
-          scale: { x: width, y: height, z: depth },
-          direction
-        });
+    // Check if gap is valid (ensure gapStart is less than gapEnd)
+    if (gapStart < gapEnd) {
+      // Create wall segments on either side of the gap
+      if (direction === 'north' || direction === 'south') {
+        // Calculate left segment dimensions and position
+        if (gapStart > 0) {
+          const leftSegmentWidth = gapStart;
+          const leftSegmentX = x - (scaleX / 2) + (leftSegmentWidth / 2);
+          
+          const leftWall = new THREE.Mesh(
+            new THREE.BoxGeometry(leftSegmentWidth, scaleY, scaleZ),
+            wallMaterial
+          );
+          leftWall.position.set(leftSegmentX, y, z);
+          scene.add(leftWall);
+          walls.push(leftWall);
+        }
+
+        // Calculate right segment dimensions and position
+        if (gapEnd < scaleX) {
+          const rightSegmentWidth = scaleX - gapEnd;
+          const rightSegmentX = x + (scaleX / 2) - (rightSegmentWidth / 2);
+          
+          const rightWall = new THREE.Mesh(
+            new THREE.BoxGeometry(rightSegmentWidth, scaleY, scaleZ),
+            wallMaterial
+          );
+          rightWall.position.set(rightSegmentX, y, z);
+          scene.add(rightWall);
+          walls.push(rightWall);
+        }
+        
+        // If we should create a door in this gap
+        if (createDoorInGap) {
+          const doorWidth = Math.min(gapWidth, 5); // Limit door width
+          const doorX = x - (scaleX / 2) + gapStart + (doorWidth / 2);
+          const doorZ = z;
+          
+          // Create a door with the correct orientation based on the wall direction
+          createDoor(doorX, y, doorZ, doorWidth, scaleY, scaleZ, 'z'); // Door for north/south wall
+        }
+      } else if (direction === 'east' || direction === 'west') {
+        // Calculate front segment dimensions and position
+        if (gapStart > 0) {
+          const frontSegmentDepth = gapStart;
+          const frontSegmentZ = z - (scaleZ / 2) + (frontSegmentDepth / 2);
+          
+          const frontWall = new THREE.Mesh(
+            new THREE.BoxGeometry(scaleX, scaleY, frontSegmentDepth),
+            wallMaterial
+          );
+          frontWall.position.set(x, y, frontSegmentZ);
+          scene.add(frontWall);
+          walls.push(frontWall);
+        }
+
+        // Calculate back segment dimensions and position
+        if (gapEnd < scaleZ) {
+          const backSegmentDepth = scaleZ - gapEnd;
+          const backSegmentZ = z + (scaleZ / 2) - (backSegmentDepth / 2);
+          
+          const backWall = new THREE.Mesh(
+            new THREE.BoxGeometry(scaleX, scaleY, backSegmentDepth),
+            wallMaterial
+          );
+          backWall.position.set(x, y, backSegmentZ);
+          scene.add(backWall);
+          walls.push(backWall);
+        }
+        
+        // If we should create a door in this gap
+        if (createDoorInGap) {
+          const doorDepth = Math.min(gapWidth, 5); // Limit door depth
+          const doorX = x;
+          const doorZ = z - (scaleZ / 2) + gapStart + (doorDepth / 2);
+          
+          // Create a door with the correct orientation based on the wall direction
+          createDoor(doorX, y, doorZ, scaleX, scaleY, doorDepth, 'x'); // Door for east/west wall
+        }
       }
     }
-    
-    return;
   }
-  
-  // If gap is specified, create two wall segments
-  
-  // For North/South walls (running East-West)
-  if (direction === 'north' || direction === 'south') {
-    // Left segment (if it exists)
-    if (gapStart > 0) {
-      const leftWidth = gapStart;
-      const leftX = x - width/2 + leftWidth/2;
-      
-      const leftWall = new THREE.Mesh(
-        new THREE.BoxGeometry(leftWidth, height, depth),
-        wallMaterial
-      );
-      leftWall.position.set(leftX, y, z);
-      scene.add(leftWall);
-      walls.push(leftWall);
-    }
-    
-    // Right segment (if it exists)
-    if (gapEnd < width) {
-      const rightWidth = width - gapEnd;
-      const rightX = x + width/2 - rightWidth/2;
-      
-      const rightWall = new THREE.Mesh(
-        new THREE.BoxGeometry(rightWidth, height, depth),
-        wallMaterial
-      );
-      rightWall.position.set(rightX, y, z);
-      scene.add(rightWall);
-      walls.push(rightWall);
-    }
-    
-    // Add door if requested
-    if (createDoorInGap) {
-      const doorWidth = gapEnd - gapStart;
-      const doorX = x - width/2 + gapStart + doorWidth/2;
-      
-      createDoor(doorX, y, z, doorWidth, height, depth, 'z');
-    }
-  }
-  // For East/West walls (running North-South)
-  else if (direction === 'east' || direction === 'west') {
-    // Front segment (if it exists)
-    if (gapStart > 0) {
-      const frontDepth = gapStart;
-      const frontZ = z - depth/2 + frontDepth/2;
-      
-      const frontWall = new THREE.Mesh(
-        new THREE.BoxGeometry(width, height, frontDepth),
-        wallMaterial
-      );
-      frontWall.position.set(x, y, frontZ);
-      scene.add(frontWall);
-      walls.push(frontWall);
-    }
-    
-    // Back segment (if it exists)
-    if (gapEnd < depth) {
-      const backDepth = depth - gapEnd;
-      const backZ = z + depth/2 - backDepth/2;
-      
-      const backWall = new THREE.Mesh(
-        new THREE.BoxGeometry(width, height, backDepth),
-        wallMaterial
-      );
-      backWall.position.set(x, y, backZ);
-      scene.add(backWall);
-      walls.push(backWall);
-    }
-    
-    // Add door if requested
-    if (createDoorInGap) {
-      const doorDepth = gapEnd - gapStart;
-      const doorZ = z - depth/2 + gapStart + doorDepth/2;
-      
-      createDoor(x, y, doorZ, width, height, doorDepth, 'x');
-    }
-  }
-  
-  // Add to room data
+
+  // Record room data
   if (roomId !== undefined) {
     const room = roomData.find(r => r.id === roomId);
     if (room) {
-      room.walls.push({
-        id: `${roomId}-${direction}`,
-        position: { x, y, z },
-        scale: { x: width, y: height, z: depth },
+      room.walls.push({ 
+        id: `${roomId}-${direction}`, 
+        position: { x, y, z }, 
+        scale: { x: scaleX, y: scaleY, z: scaleZ }, 
         direction,
-        hasGap: true,
-        gap: { start: gapStart, end: gapEnd }
+        hasGap: gapStart !== null && gapEnd !== null,
+        gap: gapStart !== null && gapEnd !== null ? { start: gapStart, end: gapEnd } : null
       });
     }
   }
@@ -325,16 +364,12 @@ function createWallWithGap(x, y, z, width, height, depth, direction, roomId, gap
 // Function to create rooms and specify gaps
 function createRooms({ cols = 1, rows = 1, roomSize = 10 }) {
   // Clear existing walls and labels from the scene
-  for (const wall of walls.slice()) {
-    scene.remove(wall);
-  }
+  for (const wall of walls) scene.remove(wall);
   walls.length = 0;
   roomData.length = 0;
 
   // Clear existing doors
-  for (const door of doors.slice()) {
-    scene.remove(door);
-  }
+  for (const door of doors) scene.remove(door);
   doors.length = 0;
 
   const labelGroup = scene.getObjectByName("labels");
@@ -359,7 +394,7 @@ function createRooms({ cols = 1, rows = 1, roomSize = 10 }) {
       const roomX = startX + col * roomSize;
       const roomZ = startZ + row * roomSize;
       const half = roomSize / 2;
-      const height = 3.2;
+      const height = 1;
       const id = roomIdCounter++;
       const label = `Room ${id}`;
 
@@ -370,34 +405,42 @@ function createRooms({ cols = 1, rows = 1, roomSize = 10 }) {
         walls: []
       });
 
-      // Create walls for each room
-      // For room 1, we want to add a gap (e.g., door) on the east wall (next room entrance)
+      // Create walls for each room with proper gaps for doors
       if (row === 0 && col === 0) { // Room 1
-        createWallWithGap(roomX, height / 2, roomZ - half, roomSize, height, 0.5, "north", id);  // North wall
-        createWallWithGap(roomX, height / 2, roomZ + half, roomSize, height, 0.5, "south", id);  // South wall
-        createWallWithGap(roomX - half, height / 2, roomZ, 0.5, height, roomSize, "west", id);   // West wall
-        createWallWithGap(roomX + half, height / 2, roomZ, 0.5, height, roomSize, "east", id, 5, 10, true); // East wall of room 1 with door
+        createWallWithData(roomX, height / 2, roomZ - half, roomSize, height, 0.5, "north", id);  // North wall
+        createWallWithData(roomX, height / 2, roomZ + half, roomSize, height, 0.5, "south", id);  // South wall
+        createWallWithData(roomX - half, height / 2, roomZ, 0.5, height, roomSize, "west", id);   // West wall
+        
+        // East wall of room 1 with gap for door
+        const doorWidth = 3; // Width of the door
+        const gapStart = (roomSize - doorWidth) / 2; // Center the door
+        const gapEnd = gapStart + doorWidth;
+        createWallWithData(roomX + half, height / 2, roomZ, 0.5, height, roomSize, "east", id, gapStart, gapEnd, true);
       } 
       else if (row === 0 && col === 1) { // Room 2
-        createWallWithGap(roomX, height / 2, roomZ - half, roomSize, height, 0.5, "north", id);  // North wall
-        createWallWithGap(roomX, height / 2, roomZ + half, roomSize, height, 0.5, "south", id);  // South wall
-        createWallWithGap(roomX - half, height / 2, roomZ, 0.5, height, roomSize, "west", id, 5, 10, false);   // West wall of room 2 with matching gap but no door
-        createWallWithGap(roomX + half, height / 2, roomZ, 0.5, height, roomSize, "east", id);   // East wall
+        createWallWithData(roomX, height / 2, roomZ - half, roomSize, height, 0.5, "north", id);  // North wall
+        createWallWithData(roomX, height / 2, roomZ + half, roomSize, height, 0.5, "south", id);  // South wall
+        
+        // West wall of room 2 with gap matching room 1's east wall
+        const doorWidth = 5;
+        const gapStart = (roomSize - doorWidth) / 2;
+        const gapEnd = gapStart + doorWidth;
+        createWallWithData(roomX - half, height / 2, roomZ, 0.5, height, roomSize, "west", id, gapStart, gapEnd, false);
+        
+        createWallWithData(roomX + half, height / 2, roomZ, 0.5, height, roomSize, "east", id);   // East wall
       }
       else {
-        createWallWithGap(roomX, height / 2, roomZ - half, roomSize, height, 0.5, "north", id);  // North wall
-        createWallWithGap(roomX, height / 2, roomZ + half, roomSize, height, 0.5, "south", id);  // South wall
-        createWallWithGap(roomX - half, height / 2, roomZ, 0.5, height, roomSize, "west", id);   // West wall
-        createWallWithGap(roomX + half, height / 2, roomZ, 0.5, height, roomSize, "east", id);   // East wall
+        createWallWithData(roomX, height / 2, roomZ - half, roomSize, height, 0.5, "north", id);  // North wall
+        createWallWithData(roomX, height / 2, roomZ + half, roomSize, height, 0.5, "south", id);  // South wall
+        createWallWithData(roomX - half, height / 2, roomZ, 0.5, height, roomSize, "west", id);   // West wall
+        createWallWithData(roomX + half, height / 2, roomZ, 0.5, height, roomSize, "east", id);   // East wall
       }
 
       addLabelToFloor(roomX, roomZ, label);
     }
   }
 }
-
 createRooms({ cols: 2, rows: 2, roomSize: 30 });
-console.log(roomData);
 
 // Movement
 const keys = {};
@@ -416,13 +459,16 @@ document.addEventListener('keyup', e => keys[e.key] = false);
 
 // Fixed collision detection function
 function checkCollision(x, z) {
+  const playerRadius = 0.5;
+  
   for (const wall of walls) {
-    // Skip collision check for open doors
-    if (wall.userData && wall.userData.isDoor && wall.userData.isOpen) {
+    // For doors, use their current position (not original) for collision detection
+    // Skip fully open doors (when openAmount is 1)
+    if (wall.userData && wall.userData.isDoor && wall.userData.openAmount >= 0.9) {
       continue;
     }
     
-    // Get the actual dimensions of the wall
+    // Get the actual dimensions of the wall/door
     let width, depth;
     
     if (wall.geometry && wall.geometry.parameters) {
@@ -433,16 +479,17 @@ function checkCollision(x, z) {
       depth = wall.scale ? wall.scale.z : 0;
     }
     
-    // Calculate half sizes plus player radius (0.5)
+    // Calculate half sizes plus player radius
     const halfWidth = width / 2;
     const halfDepth = depth / 2;
     
     // Calculate distance between player and wall center
+    // Use actual current position for doors (not original position)
     const dx = Math.abs(x - wall.position.x);
     const dz = Math.abs(z - wall.position.z);
     
     // Check if player is colliding with wall
-    if (dx < halfWidth + 0.5 && dz < halfDepth + 0.5) {
+    if (dx < halfWidth + playerRadius && dz < halfDepth + playerRadius) {
       return true;
     }
   }
