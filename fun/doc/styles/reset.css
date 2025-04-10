@@ -1,0 +1,29 @@
+* {
+  margin: 0;
+  padding: 0;
+
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/*
+::-webkit-scrollbar {
+  width: 8px;
+  background-color: var(--color-bg-secondary);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-left: solid 4px lightblue;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: transparent;
+  background-color: lightblue;
+}
+*/
