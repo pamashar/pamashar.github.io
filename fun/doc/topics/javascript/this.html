@@ -11,22 +11,34 @@
   </head>
   <body>
     <main>
-      <h1>Data types</h1>
+      <h1>This</h1>
       <br/>
-      <h3>
-        Primitives (by value, reference-like in memory):
-      </h3>
+      <p>this - is a keyword to define what scope is relevant for code block</p>
+      <br/>
 <pre><code class="language-javascript">
-// string, number, bigint, symbol, boolean, null, undefined
+class User() {
+  getThisArrowClass = () => console.log(this);
+  getThisRegularClass() { console.log(this); };
+}
+
+const user = {
+  name: 'Abc',
+  getThisArrow: () => console.log(this),
+  getThisRegular: function () {
+    console.log(this);
+  },
+}
+
+user.getThisArrow() // Window object. Where function executed
+user.getThisRegular() // user object. Where function defined
+
+(new User()).getThisArrow() // User instance. Constructor set this
+(new User()).getThisRegular() // User instance. Constructor set this
 </code></pre>
-      <h3>
-        Object (by reference):
-      </h3>
-<pre><code class="language-javascript">
-// object
-</code></pre>
+
     </main>
     <script type="text/javascript" src="../../scripts/initNav.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/prism.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   </body>
 </html>
+

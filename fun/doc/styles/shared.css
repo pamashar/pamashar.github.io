@@ -1,29 +1,38 @@
+@font-face {
+  font-family: 'RobotoMono';
+  src: url('../fonts/roboto/RobotoMono-Medium.ttf') format('truetype');
+  font-display: swap;
+}
+
 * {
   margin: 0;
   padding: 0;
 
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  font-family: 'RobotoMono', monospace;
+
+  /*
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 
   ::-webkit-scrollbar {
     display: none;
   }
+  */
 }
 
-/*
+*
 ::-webkit-scrollbar {
-  width: 8px;
   background-color: var(--color-bg-secondary);
+  background-color: transparent;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: transparent;
-  border-left: solid 4px lightblue;
+  border: dashed 1px lightblue;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: transparent;
   background-color: lightblue;
 }
-*/
+

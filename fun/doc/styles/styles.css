@@ -9,11 +9,14 @@ body {
 nav {
   background-color: var(--color-bg-primary);
   padding: 1em;
+  width: auto;
   overflow-y: auto;
+  flex-shrink: 0;
 }
 
 main {
   display: flex;
+  flex-direction: column;
   flex: 1;
   background-color: var(--color-bg-secondary);
   padding: 1em .5em 0 1em;
@@ -23,15 +26,19 @@ ul.topics {
   list-style-type: none;
   overflow-y: auto;
 }
-ul.topics li {
+ul.topics>li {
   margin: 0 0 0.5em 0;
 }
 
 ul.topics ul {
   list-style-type: none;
 }
-ul.topics ul li {
-  margin: 0.25em 0 0.25em 1em;
+ul.topics ul>li {
+  padding: 0.25em 0 0.25em 1em;
+}
+*[data-type=topic]:hover, *[data-type=subtopic]:hover {
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 iframe {
