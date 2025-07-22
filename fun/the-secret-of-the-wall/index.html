@@ -53,8 +53,10 @@
             min-width: calc(100% - 2 * 14px - 2px);
             background-color: var(--color-bg);
         }
-        input[type="text"] {
+        input[type="text"],
+        input[type="range"] {
             width: 85vw;
+          min-height: 24px;
         }
         label {
             display: flex;
@@ -63,9 +65,30 @@
             cursor: pointer;
             width: fit-content;
         }
+        #chars {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+        .char {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 4px;
+          border: solid 1px var(--color-text-secondary);
+          border-radius: 4px;
+          cursor: pointer;
+          min-width: 24px;
+          min-height: 24px;
+          font-size: 16px;
+        }
+        .char:hover {
+            background-color: rgb(31,145,243);
+        }
 
         .row {
             display: flex;
+          align-items: center;
         }
         .ceil {
             flex-shrink: 0;
@@ -79,7 +102,7 @@
         }
         .ceil.legend {
             display: none;
-            font-size: calc(var(--font-size-result)/3);
+            font-size: calc(var(--font-size-result)/2);
         }
 
         .result {
@@ -105,18 +128,6 @@
         #colorPickerControl {
             width: 85vw;
         }
-        .colorPreview {
-            top: 200px;
-            width: 100px;
-            height: 100px;
-            position: absolute;
-            border-radius: 4px;
-            transition: .1s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1;
-        }
 
         .hidden {
             display: none;
@@ -125,6 +136,7 @@
             padding: 4px;
             border-radius: 4px;
             cursor: pointer;
+          min-height: 40px;
         }
         .gap {
             gap: 12px;
@@ -132,14 +144,14 @@
         </style>
     </head>
     <body>
-        <div class="colorPreview hidden"></div>
-        <div class="config hidden">
+        <div class="config">
+            <div id="chars"></div>
             <input id="symbol" type="text" name="symbol" placeholder="symbol" />
             <input id="word" type="text" name="word" placeholder="keyword"/>
             <input id="input" type="text" name="input" placeholder="your text"/>
             <label for="resultSize">
                 <span>Result size</span>
-                <input id="resultSize" type="range" min="4" max="24" step="0.2" value="14" />
+                <input id="resultSize" type="range" min="4" max="40" step="0.5" value="14" />
                 <span class="resultSizeDisplay"></span>
             </label>
             <label for="showMatchedControl">
@@ -154,16 +166,9 @@
                 <input id="darkThemeControl" type="checkbox" />
                 <span>Dark theme</span>
             </label>
-            <input id="colorPickerControl" type="range" min="0" step="1" max="10000" />
             <div class="row gap">
-                <label for="colorPickerModeBg">
-                    <input type="radio" id="colorPickerModeBg" name="colorPickerMode" value="bg" checked />
-                    <span>Background color</span>
-                </label>
-                <label for="colorPickerModeText">
-                    <input type="radio" id="colorPickerModeText" name="colorPickerMode" value="text" />
-                    <span>Text color</span>
-                </label>
+                <input id="textColorPicker" type="color" />
+                <input id="bgColorPicker" type="color" />
                 <button type="button" onclick="clearColorPickerStyles()">Reset color styles</button>
             </div>
             <button onclick="rotate()">Rotate</button>
@@ -172,11 +177,11 @@
         <script>
         let chars = [
             "■", "▲", "▼", "◆", "●", "◘", "▣", "▤", "▥", "▦", "▧", "▨", "▩", "▪", "▬", "▮", "◧", "◨",
-            "◩", "◪", "★", "♠", "♣", "♦", "♚", "♛", "♜", "♝", "♞", "♟", "✓", "✔", "✕", "✖", "❤", "□",
+            "◩", "◪", "★", "♠", "♣", "♦", "♚", "♛", "♜", "♝", "♞", "♟", "✓", "✔", "✕", "✖", "□",
             "△", "▽", "○", "◎", "▰", "▱", "▶", "▷", "◀", "◁", "►", "◄", "◈", "◌", "◐", "◑", "◒", "◓",
-            "◔", "◕", "◖", "◗", "◙", "☀", "☂", "☃", "☄", "☆", "☇", "☉", "☊", "☋", "☌", "☍", "☎", "☏",
-            "☐", "☑", "☒", "☙", "☚", "☛", "☜", "☞", "☟", "☠", "☢", "☣", "☤", "☥", "☦", "☧", "☨", "☩",
-            "☪", "☫", "☬", "☭", "☮", "☯", "☰", "☱", "☲", "☳", "☴", "☵", "☶", "☷", "♡", "♢", "♤", "♥",
+            "◔", "◕", "◖", "◗", "◙", "☀", "☂", "☆", "☇", "☉", "☊", "☋", "☌", "☍", "☎",
+            "☐", "☑", "☒", "☙", "☚", "☛", "☜", "☞", "☟", "☠", "☢", "☣",
+            "☬", "☮", "☯", "♡", "♢", "♤", "♥",
             "♧", "♨", "♩", "♪",
         ];
         const abc = 'abcdefghijklmnopqrstuvwxyz';
@@ -184,6 +189,26 @@
         const rootElem = document.querySelector(':root');
         const bodyElem = document.getElementsByTagName('body')[0];
         const configElem = document.querySelector('.config');
+        const darkThemeControlElem = document.querySelector('#darkThemeControl');
+
+        function setSymbol(value) {
+          const inputElem = document.querySelector('input[name="symbol"]');
+          inputElem.value = value;
+          inputElem.dispatchEvent(new Event('input'));
+        }
+
+        function initChars() {
+          const charsElem = document.querySelector("#chars");
+          charsElem.addEventListener('click', event => {
+            const target = event.target;
+            if (!target.classList.contains('char')) return;
+            setSymbol(target.innerHTML);
+          })
+          const result = chars.map(char => {
+            return `<div class="char">${char}</div>`;
+          });
+          charsElem.innerHTML = result.join('');
+        };
 
         function generateSVGFavicon(character) {
             return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
@@ -194,7 +219,7 @@
                     </svg>
                    `;
         };
-        let svgFavicons = chars.map(char => generateSVGFavicon(char));
+        let svgFavicons = chars.map(generateSVGFavicon);
         setInterval(function() {
             svgIcon = svgFavicons[Math.floor(Math.random() * svgFavicons.length - 1)]
             const encodedSvg = encodeURIComponent(svgIcon);
@@ -301,29 +326,34 @@
                 return `<span class="row">${ceils.join('')}</span>`
             }).join('');
         }
-        function convertRangeToHex(value) {
-            // Convert percentage to value between 0 and 16777215 (hex FFFFFF)
-            const rawHex = Math.floor((value / 10000) * 16777215);
-            //const rawHex = Math.floor((value / 16777215) * 16777215);
-            // Convert to hex and pad with zeros if needed;
-            return '#'+rawHex.toString(16).padStart(6, '0');
-        }
-        function clearColorPickerStyles(bodyElem) {
-            darkThemeControlElem.checked = false;
-            const computed = getComputedStyle(rootElem)
-            rootElem.style.setProperty('--color-bg', computed.getPropertyValue('--color-light'));
-            rootElem.style.setProperty('--color-text', computed.getPropertyValue('--color-dark'));
-        }
-        function addListenersToColorPickerModeOptions() {
-            const options = document.querySelectorAll('input[name="colorPickerMode"]');
-            options.forEach(option => {
-                option.addEventListener('click', function(event) {
-                    options.forEach(option => option.removeAttribute('checked'));
-                    option.setAttribute('checked', true);
-                })
-            })
 
+        function resetThemeControl() {
+          darkThemeControlElem.checked = false;
         }
+
+        function resetColorPickers(computed) {
+          const bgColorRgb = computed.getPropertyValue('--color-light');
+          const textColorRgb = computed.getPropertyValue('--color-dark');
+          rootElem.style.setProperty('--color-bg', bgColorRgb);
+          rootElem.style.setProperty('--color-text', textColorRgb);
+          bgColorPicker.value = rgbToHex(bgColorRgb);
+          textColorPicker.value = rgbToHex(textColorRgb);
+        }
+
+        function resetRootColors(computed) {
+          const bgColorRgb = computed.getPropertyValue('--color-light');
+          const textColorRgb = computed.getPropertyValue('--color-dark');
+          rootElem.style.setProperty('--color-bg', bgColorRgb);
+          rootElem.style.setProperty('--color-text', textColorRgb);
+        }
+
+        function resetColors() {
+          const computed = getComputedStyle(rootElem)
+          resetThemeControl();
+          resetRootColors(computed);
+          resetColorPickers(computed);
+        }
+
         function addListenersToInputs() {
             const resultElem = document.querySelector('.result');
             const inputElem = document.querySelector('input[name="input"]');
@@ -337,8 +367,21 @@
             })
         }
 
+        function rgbToHex(rgb) {
+          const digitsTxtArr = rgb.match(/\d+/g);
+          const str = digitsTxtArr
+            .slice(0, 3)
+            .map(s => +s)
+            .map(n => n.toString(16))
+            .map(s => s.padStart(2, '0'))
+            .join('');
+
+          return '#' + str;
+        };
+
+        initChars();
+        resetColors();
         addListenersToInputs();
-        addListenersToColorPickerModeOptions();
 
         const showMatchedControlElem = document.querySelector('#showMatchedControl');
         showMatchedControlElem.addEventListener('change', (event) => {
@@ -350,7 +393,6 @@
             resultElem.classList.toggle('withLegend')
         })
 
-        const darkThemeControlElem = document.querySelector('#darkThemeControl');
         darkThemeControlElem.addEventListener('change', (event) => {
             const computed = getComputedStyle(rootElem)
             const isDarkMode = computed.getPropertyValue('--color-bg') === getComputedStyle(rootElem).getPropertyValue('--color-dark');
@@ -369,48 +411,18 @@
             rootElem.style.setProperty('--font-size-result', value + 'px');
         })
 
-        const colorPickerControlElem = document.querySelector('#colorPickerControl');
-        const colorPreviewElem = document.querySelector('.colorPreview');
-        ['mousedown', 'touchstart'].forEach(event => colorPickerControlElem.addEventListener(event, event => {
-            const x = event.clientX || event.touches[0].clientX;
-            const y = event.clientY || event.touches[0].clientY;
-            colorPreviewElem.style.left = x - 100 / 2 + 'px';
-            colorPreviewElem.style.top = y - 100 - 10 + 'px';
-            colorPreviewElem.classList.remove('hidden');
-        }));
-        ['mousemove', 'touchmove'].forEach(event => colorPickerControlElem.addEventListener(event, event => {
-            requestAnimationFrame(() => {
-                if (!event.clientX && !event.touches?.[0].clientX) return;
-                if (colorPickerControlElem.value <= 50 || colorPickerControlElem.value >= 9950) {
-                    return;
-                }
+        const bgColorPickerElem = document.querySelector('#bgColorPicker');
+        const textColorPickerElem = document.querySelector('#textColorPicker');
 
-                const x = event.clientX || event.touches[0].clientX;
-                const isNearStart = colorPickerControlElem.value < 10000 / 2;
-                const isNearEnd = colorPickerControlElem.value > 10000 / 2;
-                const shift = (10000/2-colorPickerControlElem.value) / 100
-                colorPreviewElem.style.left = x - 100 / 2 + shift + 'px';
-            })
-        }));
-        ['mouseup', 'touchend'].forEach(event => colorPickerControlElem.addEventListener(event, event => {
-            colorPreviewElem.classList.add('hidden');
-        }));
+        bgColorPickerElem.addEventListener('input', (event) => {
+            const value = bgColorPickerElem.value;
+            rootElem.style.setProperty('--color-bg', value);
+        })
+        textColorPickerElem.addEventListener('input', (event) => {
+            const value = textColorPickerElem.value;
+            rootElem.style.setProperty('--color-text', value);
+        })
 
-        colorPickerControlElem.addEventListener('input', (event) => {
-            const value = colorPickerControlElem.value;
-            const hexColor = convertRangeToHex(value);
-            colorPreviewElem.innerHTML = hexColor;
-            colorPreviewElem.style.backgroundColor = hexColor;
-        })
-        colorPickerControlElem.addEventListener('change', (event) => {
-            const colorPickerModeElem = document.querySelector('input[name="colorPickerMode"]:checked');
-            const isModeBg = colorPickerModeElem.value === 'bg';
-            const value = colorPickerControlElem.value;
-            const hexColor = convertRangeToHex(value);
-            rootElem.style.setProperty(isModeBg ? '--color-bg' : '--color-text', hexColor);
-            colorPreviewElem.innerHTML = '';
-            colorPreviewElem.style = '';
-        })
         </script>
     </body>
 </html>
