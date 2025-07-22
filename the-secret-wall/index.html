@@ -45,18 +45,34 @@
             left: 0;
             display: flex;
             flex-direction: column;
+            gap: 10px;
             transition: .1s;
             padding: 14px;
             border: solid 1px var(--color-text-secondary);
             border-top: none;
-            gap: 8px;
             min-width: calc(100% - 2 * 14px - 2px);
             background-color: var(--color-bg);
         }
+        .inputsRow {
+          width: 100%;
+          display: flex;
+          justify-content: space-between;
+          gap: 10px;
+        }
+        .inputRow input {
+          flex: 1;
+        }
         input[type="text"],
         input[type="range"] {
-            width: 85vw;
+          width: 100%;
           min-height: 24px;
+        }
+        .checkboxes {
+          width: 100%;
+          display: flex;
+          gap: 10px;
+          justify-content: space-between;
+          wrap: flex-wrap;
         }
         label {
             display: flex;
@@ -68,21 +84,20 @@
         #chars {
           display: flex;
           flex-wrap: wrap;
-          gap: 10px;
+          gap: 2px;
         }
         .char {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 4px;
           border: solid 1px var(--color-text-secondary);
           border-radius: 4px;
           cursor: pointer;
-          min-width: 24px;
-          min-height: 24px;
+          min-width: 20px;
+          min-height: 20px;
           font-size: 16px;
         }
-        .char:hover {
+        .char:active {
             background-color: rgb(31,145,243);
         }
 
@@ -146,14 +161,13 @@
     <body>
         <div class="config">
             <div id="chars"></div>
-            <input id="symbol" type="text" name="symbol" placeholder="symbol" />
-            <input id="word" type="text" name="word" placeholder="keyword"/>
+            <div class="inputsRow">
+                  <input id="symbol" type="text" name="symbol" placeholder="symbol" />
+                  <input id="word" type="text" name="word" placeholder="keyword"/>
+            </div>
             <input id="input" type="text" name="input" placeholder="your text"/>
-            <label for="resultSize">
-                <span>Result size</span>
                 <input id="resultSize" type="range" min="4" max="40" step="0.5" value="14" />
-                <span class="resultSizeDisplay"></span>
-            </label>
+      <div class="checkboxes">
             <label for="showMatchedControl">
                 <input id="showMatchedControl" type="checkbox" />
                 <span>Highlight matched</span>
@@ -166,10 +180,11 @@
                 <input id="darkThemeControl" type="checkbox" />
                 <span>Dark theme</span>
             </label>
+      </div>
             <div class="row gap">
                 <input id="textColorPicker" type="color" />
                 <input id="bgColorPicker" type="color" />
-                <button type="button" onclick="clearColorPickerStyles()">Reset color styles</button>
+                <button type="button" onclick="resetColors()">Reset color styles</button>
             </div>
             <button onclick="rotate()">Rotate</button>
         </div>
